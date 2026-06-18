@@ -287,8 +287,27 @@ LoadConverter::matchAndRewrite(triton::LoadOp op, OpAdaptor adaptor,
     auto ret = mlir::ConverterUtils::getLastStrideOfReinterpretCastOp(memrefOp);
     if(ret.has_value())lastStride = *ret;
   }
-  bool mayImplicitTransposeWithLastAxis = (existDotFlag) && (!op->hasAttr(ConverterUtils::GeneratedByMakeTensorPtrTAG)) &&
-    (lastStride != 1 && mlir::ConverterUtils::isaPermutedMemRefType(memRefType));
+
+  bool hasDisableTransposeHint = false;
+  Operation *markOpToErase = nullptr;
+  for (Operation *user : op.getResult().getUsers()) {
+    if (auto markOp = dyn_cast<annotation::MarkOp>(user)) {
+      if (markOp->hasAttr("disable_implicit_transpose")) {
+        hasDisableTransposeHint = true;
+        markOpToErase = markOp;
+        break;
+      }
+    }
+  }
+  if (markOpToErase) {
+    markOpToErase->erase();
+  }
+  bool mayImplicitTransposeWithLastAxis = false;
+  if (!hasDisableTransposeHint) {
+    mayImplicitTransposeWithLastAxis = (existDotFlag) && (!op->hasAttr(ConverterUtils::GeneratedByMakeTensorPtrTAG)) &&
+      (lastStride != 1 && mlir::ConverterUtils::isaPermutedMemRefType(memRefType));
+  }
+
   auto memRefShape = memRefType.getShape();
   auto memRefElementType = memRefType.getElementType();
 
