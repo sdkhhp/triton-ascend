@@ -300,7 +300,7 @@ LoadConverter::matchAndRewrite(triton::LoadOp op, OpAdaptor adaptor,
     }
   }
   if (markOpToErase) {
-    markOpToErase->erase();
+    rewriter.eraseOp(markOpToErase);
   }
   bool mayImplicitTransposeWithLastAxis = false;
   if (!hasDisableTransposeHint) {
